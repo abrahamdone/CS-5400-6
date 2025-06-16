@@ -9,12 +9,12 @@ MySample.main = (function() {
 
     let object = {};
     let texture = {};
-    let redLightPosition = {};
-    let redLightLum = 1;
-    let greenLightPosition = {};
-    let greenLightLum = 1;
-    let blueLightPosition = {};
-    let blueLightLum = 1;
+    let eye = [0, 0, 3];
+    let diffuseLightPosition = {};
+    let diffuseLight = [1, 1, 1];
+    let specularLightPosition = {};
+    let specularLight = [1, 1, 1];
+    let specularN = 1.0;
     let angle = 0;
     let step = 0;
 
@@ -27,28 +27,15 @@ MySample.main = (function() {
     //
     //------------------------------------------------------------------
     function update() {
-        let lightOff = step / 400;
-        if (lightOff > 1 && lightOff < 2) {
-            redLightLum = 0;
-        } else if (lightOff > 2 && lightOff < 3) {
-            greenLightLum = 0;
-        } else if (lightOff > 3 && lightOff < 4) {
-            blueLightLum = 0;
-        } else {
-            redLightLum = 1;
-            greenLightLum = 1;
-            blueLightLum = 1;
-        }
-        step++;
-
         if (angle > 2 * Math.PI) {
             angle = 0;
         }
         angle += 0.005;
 
-        redLightPosition = [1, 0, 0];
-        greenLightPosition = [0, 0, 1];
-        blueLightPosition = [-1, 0, 0];
+        diffuseLightPosition = [1, 0, 1];
+        // diffuseLight = [0, 0, 0];
+        specularLightPosition = [1, 0, 1];
+        // specularLight = [0, 0, 0];
     }
 
     //------------------------------------------------------------------
@@ -71,7 +58,7 @@ MySample.main = (function() {
         gl.uniformMatrix4fv(uProjection, false, transposeMatrix4x4(perspectiveProjection(1, 1, 1, 10)));
 
         let uView = gl.getUniformLocation(shaderProgram, 'uView');
-        gl.uniformMatrix4fv(uView, false, transposeMatrix4x4(moveMatrix(0, 0, -3)));
+        gl.uniformMatrix4fv(uView, false, transposeMatrix4x4(moveMatrix(eye[0], eye[1], -eye[2])));
 
         let model = multiplyMatrix4x4(
             multiplyMatrix4x4(
@@ -85,23 +72,23 @@ MySample.main = (function() {
         let uMaterial = gl.getUniformLocation(shaderProgram, 'uMaterial');
         gl.uniform4fv(uMaterial, [1, 1, 1, 1]);
 
-        let uRedLight = gl.getUniformLocation(shaderProgram, 'uRedLight');
-        gl.uniform3fv(uRedLight, redLightPosition);
+        let uDiffuseLightPosition = gl.getUniformLocation(shaderProgram, 'uDiffuseLightPosition');
+        gl.uniform3fv(uDiffuseLightPosition, diffuseLightPosition);
 
-        let uRedLum = gl.getUniformLocation(shaderProgram, 'uRedLum');
-        gl.uniform1f(uRedLum, redLightLum);
+        let uDiffuseLight = gl.getUniformLocation(shaderProgram, 'uDiffuseLight');
+        gl.uniform3fv(uDiffuseLight, diffuseLight);
 
-        let uGreenLight = gl.getUniformLocation(shaderProgram, 'uGreenLight');
-        gl.uniform3fv(uGreenLight, greenLightPosition);
+        let uEye = gl.getUniformLocation(shaderProgram, 'uEye');
+        gl.uniform3fv(uEye, eye);
 
-        let uGreenLum = gl.getUniformLocation(shaderProgram, 'uGreenLum');
-        gl.uniform1f(uGreenLum, greenLightLum);
+        let uSpecularLightPosition = gl.getUniformLocation(shaderProgram, 'uSpecularLightPosition');
+        gl.uniform3fv(uSpecularLightPosition, specularLightPosition);
 
-        let uBlueLight = gl.getUniformLocation(shaderProgram, 'uBlueLight');
-        gl.uniform3fv(uBlueLight, blueLightPosition);
+        let uSpecularLight = gl.getUniformLocation(shaderProgram, 'uSpecularLight');
+        gl.uniform3fv(uSpecularLight, specularLight);
 
-        let uBlueLum = gl.getUniformLocation(shaderProgram, 'uBlueLum');
-        gl.uniform1f(uBlueLum, blueLightLum);
+        let uSpecularN = gl.getUniformLocation(shaderProgram, 'uSpecularN');
+        gl.uniform1f(uSpecularN, specularN);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.drawElements(gl.TRIANGLES, object.indices.length, gl.UNSIGNED_INT, 0);
@@ -124,15 +111,18 @@ MySample.main = (function() {
         console.log('initializing...');
 
         const vertexShaderSource = await loadFileFromServer('assets/shaders/simple.vert');
-        const fragmentShaderSource = await loadFileFromServer('assets/shaders/simple.frag');
+        const diffuseShaderSource = await loadFileFromServer('assets/shaders/diffuse.frag');
+        const specularShaderSource = await loadFileFromServer('assets/shaders/specular.frag');
+        const combineShaderSource = await loadFileFromServer('assets/shaders/combine.frag');
+        // const skyboxObjectSource = await loadFileFromServer('assets/models/skybox.ply');
         // const objectSource = await loadFileFromServer('assets/models/tetrahedron.ply');
         const objectSource = await loadFileFromServer('assets/models/bunny.ply');
         const textureImage = await loadTextureFromServer('assets/textures/bunny.png');
 
-        initializeShaders(vertexShaderSource, fragmentShaderSource);
+        initializeShaders(vertexShaderSource, combineShaderSource);
+        // let skybox = plyParser(skyboxObjectSource);
         object = plyParser(objectSource);
         initializeBufferObjects(object, textureImage);
-        console.log(object.textures);
 
         requestAnimationFrame(animationLoop);
     }

@@ -15,10 +15,10 @@ async function loadTextureFromServer(filename) {
         let asset = new Image();
         asset.src = filename;
         await asset.decode();
-        console.log('loaded');
+        console.log('loaded the texture');
         return asset;
     } catch (err) {
-        console.log('bad things happened');
+        console.log('bad things happened when loading the texture');
         throw err;
     }
 }
