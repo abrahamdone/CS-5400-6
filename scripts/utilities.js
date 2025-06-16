@@ -10,6 +10,19 @@ async function loadFileFromServer(filename) {
     return result.text();
 }
 
+async function loadTextureFromServer(filename) {
+    try {
+        let asset = new Image();
+        asset.src = filename;
+        await asset.decode();
+        console.log('loaded');
+        return asset;
+    } catch (err) {
+        console.log('bad things happened');
+        throw err;
+    }
+}
+
 //------------------------------------------------------------------
 //
 // Helper function to multiply two 4x4 matrices.
@@ -158,6 +171,8 @@ function plyParser(ply) {
     let xIndex = 0;
     let yIndex = 0;
     let zIndex = 0;
+    let uIndex = -1;
+    let vIndex = -1;
 
     // parse header
     let lines = ply.split('\n');
@@ -167,14 +182,19 @@ function plyParser(ply) {
         } else if (lines[lineIndex].includes("element face")) {
             indexCount = Number(lines[lineIndex].split(" ")[2]);
         } else if (lines[lineIndex].includes("property")) {
+            let property = lines[lineIndex].split(" ")[2];
             if (firstProperty === -1) {
                 firstProperty = lineIndex;
-            } else if (lines[lineIndex].split(" ")[2] === "x") {
+            } else if (property === "x") {
                 xIndex = lineIndex - firstProperty;
-            } else if (lines[lineIndex].split(" ")[2] === "y") {
+            } else if (property === "y") {
                 yIndex = lineIndex - firstProperty;
-            } else if (lines[lineIndex].split(" ")[2] === "z") {
+            } else if (property === "z") {
                 zIndex = lineIndex - firstProperty;
+            } else if (property === "u" || property === "s") {
+                uIndex = lineIndex - firstProperty;
+            } else if (property === "v" || property === "t") {
+                vIndex = lineIndex - firstProperty;
             }
         }
 
@@ -183,6 +203,10 @@ function plyParser(ply) {
     lineIndex += 1;
 
     let vertices = new Float32Array(vertexCount * 3);
+    let textures = [];
+    if (uIndex !== -1 && vIndex !== -1) {
+        textures = new Float32Array(vertexCount * 2);
+    }
     let indices = new Uint32Array(indexCount * 3);
     let vertexNormals = new Float32Array(vertexCount * 3);
     let triangleNormals = new Array(indexCount);
@@ -191,6 +215,7 @@ function plyParser(ply) {
     // parse vertices
     let max = 0.0;
     let vertexIndex = 0;
+    let textureIndex = 0;
     for (let i = 0; i < vertexCount; i++) {
         let values = lines[i + lineIndex].split(" ");
         let x = Number(values[xIndex]);
@@ -199,6 +224,14 @@ function plyParser(ply) {
         max = Math.max(max, Math.abs(y));
         let z = Number(values[zIndex]);
         max = Math.max(max, Math.abs(z));
+        if (uIndex !== -1 && vIndex !== -1) {
+            let u = Number(values[uIndex]);
+            let v = Number(values[vIndex]);
+            textures[textureIndex] = u;
+            textureIndex += 1;
+            textures[textureIndex] = v;
+            textureIndex += 1;
+        }
         vertices[vertexIndex] = x;
         vertexIndex += 1;
         vertices[vertexIndex] = y;
@@ -283,7 +316,13 @@ function plyParser(ply) {
         }
     }
 
-    return {vertices: vertices, indices: indices, vertexNormals: vertexNormals, center: {x: 0, y: 0, z: 0}};
+    return {
+        vertices: vertices,
+        textures: textures,
+        indices: indices,
+        vertexNormals: vertexNormals,
+        center: {x: 0, y: 0, z: 0}
+    };
 }
 
 function cross(first, second, third) {

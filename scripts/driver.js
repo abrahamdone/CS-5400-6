@@ -7,9 +7,8 @@ MySample.main = (function() {
     const canvas = document.getElementById('canvas-main');
     const gl = canvas.getContext('webgl2');
 
-    let object1 = {};
-    let object2 = {};
-    let currentObject = {};
+    let object = {};
+    let texture = {};
     let redLightPosition = {};
     let redLightLum = 1;
     let greenLightPosition = {};
@@ -28,15 +27,6 @@ MySample.main = (function() {
     //
     //------------------------------------------------------------------
     function update() {
-        if (step === 0) {
-            currentObject = object1;
-            initializeBufferObjects();
-        } else if (step === 1000) {
-            currentObject = object2;
-            initializeBufferObjects();
-        } else if (step === 2000) {
-            step = -1;
-        }
         let lightOff = step / 400;
         if (lightOff > 1 && lightOff < 2) {
             redLightLum = 0;
@@ -86,8 +76,8 @@ MySample.main = (function() {
         let model = multiplyMatrix4x4(
             multiplyMatrix4x4(
                 moveMatrix(0, -1, 0),
-                scaleMatrix(currentObject.center, 1.5, 1.5, 1.5)),
-            rotateXZMatrix(currentObject.center, angle)
+                scaleMatrix(object.center, 1.5, 1.5, 1.5)),
+            rotateXZMatrix(object.center, angle)
         );
         let uModel = gl.getUniformLocation(shaderProgram, 'uModel');
         gl.uniformMatrix4fv(uModel, false, transposeMatrix4x4(model));
@@ -114,7 +104,7 @@ MySample.main = (function() {
         gl.uniform1f(uBlueLum, blueLightLum);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.drawElements(gl.TRIANGLES, currentObject.indices.length, gl.UNSIGNED_INT, 0);
+        gl.drawElements(gl.TRIANGLES, object.indices.length, gl.UNSIGNED_INT, 0);
     }
 
     //------------------------------------------------------------------
@@ -135,50 +125,66 @@ MySample.main = (function() {
 
         const vertexShaderSource = await loadFileFromServer('assets/shaders/simple.vert');
         const fragmentShaderSource = await loadFileFromServer('assets/shaders/simple.frag');
-        const object1Source = await loadFileFromServer('assets/models/happy_vrip.ply');
-        // const object1Source = await loadFileFromServer('assets/models/happy_vrip_res2.ply');
-        // const object1Source = await loadFileFromServer('assets/models/happy_vrip_res3.ply');
-        // const object1Source = await loadFileFromServer('assets/models/happy_vrip_res4.ply');
-        const object2Source = await loadFileFromServer('assets/models/bun_zipper.ply');
-        // const object2Source = await loadFileFromServer('assets/models/bun_zipper_res2.ply');
-        // const object2Source = await loadFileFromServer('assets/models/bun_zipper_res3.ply');
-        // const object2Source = await loadFileFromServer('assets/models/bun_zipper_res4.ply');
-        // const testObjectSource = await loadFileFromServer('assets/models/tetrahedron.ply');
+        // const objectSource = await loadFileFromServer('assets/models/tetrahedron.ply');
+        const objectSource = await loadFileFromServer('assets/models/bunny.ply');
+        const textureImage = await loadTextureFromServer('assets/textures/bunny.png');
 
         initializeShaders(vertexShaderSource, fragmentShaderSource);
-        object1 = plyParser(object1Source);
-        object2 = plyParser(object2Source);
-        currentObject = object2;
-        initializeBufferObjects();
+        object = plyParser(objectSource);
+        initializeBufferObjects(object, textureImage);
+        console.log(object.textures);
 
         requestAnimationFrame(animationLoop);
     }
 
-    function initializeBufferObjects() {
+    function initializeBufferObjects(object, textureImage) {
         let vertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, currentObject.vertices, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, object.vertices, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
         indexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, currentObject.indices, gl.STATIC_DRAW);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, object.indices, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
         let vertexNormalBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexNormalBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, currentObject.vertexNormals, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, object.vertexNormals, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        let textureCoordsBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordsBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, object.textures, gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+        let textureBuffer = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textureImage);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordsBuffer);
+
+        let texCoord = gl.getAttribLocation(shaderProgram, 'aTexCoord');
+        gl.enableVertexAttribArray(texCoord);
+        gl.vertexAttribPointer(texCoord, 2, gl.FLOAT, false, object.textures.BYTES_PER_ELEMENT * 2, 0);
+        let samplerLocation = gl.getUniformLocation(shaderProgram, 'uSampler');
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
+        gl.uniform1i(samplerLocation, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
         let position = gl.getAttribLocation(shaderProgram, 'aPosition');
         gl.enableVertexAttribArray(position);
-        gl.vertexAttribPointer(position, 3, gl.FLOAT, false, currentObject.vertices.BYTES_PER_ELEMENT * 3, 0);
+        gl.vertexAttribPointer(position, 3, gl.FLOAT, false, object.vertices.BYTES_PER_ELEMENT * 3, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexNormalBuffer);
         let normal = gl.getAttribLocation(shaderProgram, 'aNormal');
         gl.enableVertexAttribArray(normal);
-        gl.vertexAttribPointer(normal, 3, gl.FLOAT, false, currentObject.vertexNormals.BYTES_PER_ELEMENT * 3, 0);
+        gl.vertexAttribPointer(normal, 3, gl.FLOAT, false, object.vertexNormals.BYTES_PER_ELEMENT * 3, 0);
     }
 
     function initializeShaders(vertexShaderSource, fragmentShaderSource) {

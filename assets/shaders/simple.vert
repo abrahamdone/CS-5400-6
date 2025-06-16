@@ -2,6 +2,7 @@
 
 in vec4 aPosition;
 in vec4 aNormal;
+in vec2 aTexCoord;
 uniform mat4 uProjection;
 uniform mat4 uView;
 uniform mat4 uModel;
@@ -13,6 +14,7 @@ uniform float uGreenLum;
 uniform vec3 uBlueLight;
 uniform float uBlueLum;
 out vec4 vColor;
+out vec2 vTexCoord;
 
 void main() {
     mat4 transform = uView * uModel;
@@ -25,4 +27,5 @@ void main() {
     vColor = vec4(red, green, blue, uMaterial.w);
 
     gl_Position = uProjection * position;
+    vTexCoord = aTexCoord;
 }
