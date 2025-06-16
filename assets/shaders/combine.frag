@@ -17,6 +17,7 @@ out vec4 outColor;
 
 void main() {
     vec4 color = texture(uSampler, vTexCoord);
+
     float diffuseRed = clamp(color.x * uDiffuseLight.x * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
     float diffuseGreen = clamp(color.y * uDiffuseLight.y * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
     float diffuseBlue = clamp(color.z * uDiffuseLight.z * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
