@@ -12,11 +12,9 @@ uniform sampler2D uSampler;
 out vec4 vDiffuseColor;
 
 void main() {
-    vec4 color = texture(uSampler, vTexCoord);
+    float diffuseRed = clamp(vColor.x * uDiffuseLight.x * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
+    float diffuseGreen = clamp(vColor.y * uDiffuseLight.y * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
+    float diffuseBlue = clamp(vColor.z * uDiffuseLight.z * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
 
-    float diffuseRed = clamp(color.x * uDiffuseLight.x * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
-    float diffuseGreen = clamp(color.y * uDiffuseLight.y * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
-    float diffuseBlue = clamp(color.z * uDiffuseLight.z * dot(vNormal.xyz, normalize(uDiffuseLightPosition - vPosition.xyz)), 0.0, 1.0);
-
-    vDiffuseColor = vec4(diffuseRed, diffuseGreen, diffuseBlue, color.w);
+    vDiffuseColor = vec4(diffuseRed, diffuseGreen, diffuseBlue, vColor.w);
 }

@@ -13,13 +13,11 @@ uniform float uSpecularN;
 out vec4 vSpecularColor;
 
 void main() {
-    vec4 color = texture(uSampler, vTexCoord);
-
     vec3 V = uEye - vPosition.xyz;
     vec3 R = 2.0 * dot(vNormal.xyz, uSpecularLightPosition) * vNormal.xyz - uSpecularLightPosition;
-    float specularRed = clamp(uSpecularLight.x * color.x * clamp(pow(dot(V, R), uSpecularN), 0.0, 1.0), 0.0, 1.0);
-    float specularGreen = clamp(uSpecularLight.y * color.y * clamp(pow(dot(V, R), uSpecularN), 0.0, 1.0), 0.0, 1.0);
-    float specularBlue = clamp(uSpecularLight.z * color.z * clamp(pow(dot(V, R), uSpecularN), 0.0, 1.0), 0.0, 1.0);
+    float specularRed = clamp(uSpecularLight.x * vColor.x * clamp(pow(dot(V, R), uSpecularN), 0.0, 1.0), 0.0, 1.0);
+    float specularGreen = clamp(uSpecularLight.y * vColor.y * clamp(pow(dot(V, R), uSpecularN), 0.0, 1.0), 0.0, 1.0);
+    float specularBlue = clamp(uSpecularLight.z * vColor.z * clamp(pow(dot(V, R), uSpecularN), 0.0, 1.0), 0.0, 1.0);
 
-    vSpecularColor = vec4(specularRed, specularGreen, specularBlue, color.w);
+    vSpecularColor = vec4(specularRed, specularGreen, specularBlue, vColor.w);
 }

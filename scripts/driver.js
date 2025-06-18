@@ -8,15 +8,17 @@ MySample.main = (function() {
     const gl = canvas.getContext('webgl2');
 
     let object = {};
-    let texture = {};
+    let textureImage = {};
     let eye = [0, 0, 3];
-    let diffuseLightPosition = {};
+    let diffuseLightPosition = [1, 0, 1];
     let diffuseLight = [1, 1, 1];
-    let specularLightPosition = {};
+    let specularLightPosition = [1, 0, 1];
     let specularLight = [1, 1, 1];
     let specularN = 1.0;
     let angle = 0;
     let step = 0;
+    let y = 0;
+    let goingUp = false;
 
     let shaderProgram = {};
     let indexBuffer = {};
@@ -27,15 +29,39 @@ MySample.main = (function() {
     //
     //------------------------------------------------------------------
     function update() {
+        if (step > 1000 && step < 2000) {
+            diffuseLight = [1, 1, 1];
+            specularLight = [1, 1, 1];
+        } else if (step > 2000 && step < 3000) {
+            diffuseLight = [1, 1, 1];
+            specularLight = [1, 1, 1];
+        } else if (step === 2000) {
+            initializeBufferObjects(object.vertices, object.indices, object.vertexNormals, object.textures, textureImage);
+        } else if (step === 3000) {
+            initializeBufferObjects(object.vertices, object.indices, object.vertexNormals, [], textureImage);
+            step = 0;
+        } else {
+            diffuseLight = [1, 1, 1];
+            specularLight = [0, 0, 0];
+        }
+        step += 1;
         if (angle > 2 * Math.PI) {
             angle = 0;
         }
         angle += 0.005;
-
-        diffuseLightPosition = [1, 0, 1];
-        // diffuseLight = [0, 0, 0];
-        specularLightPosition = [1, 0, 1];
-        // specularLight = [0, 0, 0];
+        if (goingUp) {
+            if (y > 1.5) {
+                goingUp = false;
+            } else {
+                y += 0.001;
+            }
+        } else {
+            if (y < -1.5) {
+                goingUp = true;
+            } else {
+                y -= 0.001;
+            }
+        }
     }
 
     //------------------------------------------------------------------
@@ -62,7 +88,7 @@ MySample.main = (function() {
 
         let model = multiplyMatrix4x4(
             multiplyMatrix4x4(
-                moveMatrix(0, -1, 0),
+                moveMatrix(0, -1 + y, 0),
                 scaleMatrix(object.center, 1.5, 1.5, 1.5)),
             rotateXZMatrix(object.center, angle)
         );
@@ -117,35 +143,35 @@ MySample.main = (function() {
         // const skyboxObjectSource = await loadFileFromServer('assets/models/skybox.ply');
         // const objectSource = await loadFileFromServer('assets/models/tetrahedron.ply');
         const objectSource = await loadFileFromServer('assets/models/bunny.ply');
-        const textureImage = await loadTextureFromServer('assets/textures/bunny.png');
+        textureImage = await loadTextureFromServer('assets/textures/bunny.png');
 
         initializeShaders(vertexShaderSource, combineShaderSource);
         // let skybox = plyParser(skyboxObjectSource);
         object = plyParser(objectSource);
-        initializeBufferObjects(object, textureImage);
+        initializeBufferObjects(object.vertices, object.indices, object.vertexNormals, [], textureImage);
 
         requestAnimationFrame(animationLoop);
     }
 
-    function initializeBufferObjects(object, textureImage) {
+    function initializeBufferObjects(vertices, indices, vertexNormals, textures, textureImage) {
         let vertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, object.vertices, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
         indexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, object.indices, gl.STATIC_DRAW);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
 
         let vertexNormalBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexNormalBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, object.vertexNormals, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, vertexNormals, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
         let textureCoordsBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, textureCoordsBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, object.textures, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, textures, gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
         let textureBuffer = gl.createTexture();
@@ -160,7 +186,7 @@ MySample.main = (function() {
 
         let texCoord = gl.getAttribLocation(shaderProgram, 'aTexCoord');
         gl.enableVertexAttribArray(texCoord);
-        gl.vertexAttribPointer(texCoord, 2, gl.FLOAT, false, object.textures.BYTES_PER_ELEMENT * 2, 0);
+        gl.vertexAttribPointer(texCoord, 2, gl.FLOAT, false, textures.BYTES_PER_ELEMENT * 2, 0);
         let samplerLocation = gl.getUniformLocation(shaderProgram, 'uSampler');
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, textureBuffer);
@@ -169,12 +195,12 @@ MySample.main = (function() {
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
         let position = gl.getAttribLocation(shaderProgram, 'aPosition');
         gl.enableVertexAttribArray(position);
-        gl.vertexAttribPointer(position, 3, gl.FLOAT, false, object.vertices.BYTES_PER_ELEMENT * 3, 0);
+        gl.vertexAttribPointer(position, 3, gl.FLOAT, false, vertices.BYTES_PER_ELEMENT * 3, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexNormalBuffer);
         let normal = gl.getAttribLocation(shaderProgram, 'aNormal');
         gl.enableVertexAttribArray(normal);
-        gl.vertexAttribPointer(normal, 3, gl.FLOAT, false, object.vertexNormals.BYTES_PER_ELEMENT * 3, 0);
+        gl.vertexAttribPointer(normal, 3, gl.FLOAT, false, vertexNormals.BYTES_PER_ELEMENT * 3, 0);
     }
 
     function initializeShaders(vertexShaderSource, fragmentShaderSource) {
